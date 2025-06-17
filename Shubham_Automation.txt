@@ -1,0 +1,125 @@
+package calculator.calculatortest;
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+import java.time.Duration;
+import java.util.*;
+
+public class Assignment2 {
+    public static void main(String[] args) {
+    	System.setProperty("webdriver.chrome.driver", "C:\\Users\\yogeshj\\Downloads\\chromedriver-win64\\chromedriver-win64\\chromedriver.exe");
+        WebDriver driver = new ChromeDriver();
+        WebDriverWait wait = new WebDriverWait(driver, 10);
+
+        try {
+            driver.get("https://arjitnigam.github.io/myDreams/");
+
+            // Wait for loading animation to disappear
+            wait.until(ExpectedConditions.invisibilityOfElementLocated(By.id("loader")));
+            System.out.println(" Loader disappeared");
+
+            // Wait for My Dreams button and click
+            WebElement myDreamsBtn = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//button[text()='My Dreams']")));
+            myDreamsBtn.click();
+            System.out.println("Clicked My Dreams button");
+
+            // Wait for new tabs
+            String originalWindow = driver.getWindowHandle();
+            wait.until(driver1 -> driver1.getWindowHandles().size() == 3);
+            Set<String> windows = driver.getWindowHandles();
+            windows.remove(originalWindow);
+            Iterator<String> it = windows.iterator();
+            String diaryTab = it.next();
+            String summaryTab = it.next();
+
+    
+            driver.switchTo().window(diaryTab);
+            wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("table tbody")));
+
+            List<WebElement> rows = driver.findElements(By.cssSelector("table tbody tr"));
+            System.out.println("Diary entries: " + rows.size());
+
+            int good = 0, bad = 0;
+            Map<String, Integer> dreamMap = new HashMap<>();
+
+            for (WebElement row : rows) {
+                List<WebElement> cols = row.findElements(By.tagName("td"));
+                if (cols.size() != 3) continue;
+
+                String name = cols.get(0).getText().trim();
+                String type = cols.get(2).getText().trim();
+
+                if (type.equals("Good")) good++;
+                else if (type.equals("Bad")) bad++;
+
+                dreamMap.put(name, dreamMap.getOrDefault(name, 0) + 1);
+            }
+
+            int recurring = (int) dreamMap.values().stream().filter(v -> v > 1).count();
+            List<String> recurringNames = new ArrayList<>();
+            for (Map.Entry<String, Integer> entry : dreamMap.entrySet()) {
+                if (entry.getValue() > 1) recurringNames.add(entry.getKey());
+            }
+
+            System.out.println("Good dreams count: " + good);
+            System.out.println("Bad dreams count: " + bad);
+            System.out.println("Recurring dreams: " + recurringNames);
+
+            
+            driver.switchTo().window(summaryTab);
+            wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("table")));
+
+            List<WebElement> summaryRows = driver.findElements(By.cssSelector("table tbody tr"));
+            Map<String, String> summary = new HashMap<>();
+            for (WebElement row : summaryRows) {
+                List<WebElement> cols = row.findElements(By.tagName("td"));
+                if (cols.size() == 2) {
+                    summary.put(cols.get(0).getText().trim(), cols.get(1).getText().trim());
+                }
+            }
+
+            // Assertions
+            boolean status = true;
+
+            status &= assertMatch("Good dream count", good, Integer.parseInt(summary.get("Good Dreams")));
+            status &= assertMatch("Bad dream count", bad, Integer.parseInt(summary.get("Bad Dreams")));
+            status &= assertMatch("Total dream count", rows.size(), Integer.parseInt(summary.get("Total Dreams")));
+            status &= assertMatch("Recurring dream count", recurring, Integer.parseInt(summary.get("Recurring Dreams")));
+            status &= assertListMatch("Recurring dream names", recurringNames, Arrays.asList("Flying over mountains", "Lost in maze"));
+
+            if (status) System.out.println("\n All dream validations passed!");
+            else System.out.println("\n One or more dream validations failed.");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            driver.quit();
+        }
+    }
+
+    private static boolean assertMatch(String label, int actual, int expected) {
+        if (actual == expected) {
+            System.out.println( label + " matched: " + actual);
+            return true;
+        } else {
+            System.out.println(  label + " mismatch: expected " + expected + ", found " + actual);
+            return false;
+        }
+    }
+
+    private static boolean assertListMatch(String label, List<String> actual, List<String> expected) {
+        Collections.sort(actual);
+        Collections.sort(expected);
+        if (actual.equals(expected)) {
+            System.out.println(  label + " matched: " + actual);
+            return true;
+        } else {
+            System.out.println(  label + " mismatch\nExpected: " + expected + "\nFound: " + actual);
+            return false;
+        }
+    }
+} 
